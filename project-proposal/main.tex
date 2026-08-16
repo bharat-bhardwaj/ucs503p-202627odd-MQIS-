@@ -1,1 +1,278 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{times}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{xcolor}
+
+\hypersetup{colorlinks=true, linkcolor=black, urlcolor=blue}
+\titleformat{\section}{\large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{1em}{}
+
+\title{\textbf{Manufacturing Quality Intelligence System (MQIS)\\
+A Real-Time Defect Detection and RAG-Based Quality Reporting Platform}}
+
+\author{
+Bharat Bhardwaj\thanks{Roll No: 1024240013, Email: bbhardwaj\_be24@thapar.edu } \and
+Rishit\thanks{Roll No: 1024240030, Email: rgoel1\_be24@thapar.edu} \and
+Asmita\thanks{Roll No: 1024240014, Email: aasmita\_be24@thapar.edu}
+}
+\date{August 16, 2026}
+
+\begin{document}
+\maketitle
+
+\noindent\textbf{Project Proposal for UCS503}\\
+\textbf{Submitted to:} Asif Jeelani\\
+\textbf{Thapar Institute of Engineering and Technology}
+
+\vspace{0.3cm}
+
+\section{Higher-order Goal}
+This project aims to improve manufacturing quality assurance by reducing the time and
+cognitive effort required to detect, log, and diagnose defects on a production line. While
+automated visual inspection already exists in industry, the immediate engineering objective
+of this project is to build a deployable, end-to-end software pipeline that not only flags
+defective parts but also \emph{explains} why they are occurring, using live analytics
+combined with retrieval-augmented generation (RAG).
+
+\section{Time-to-value}
+\begin{itemize}[leftmargin=*]
+    \item We will deliver meaningful increments quickly by prototyping the core detection-to-logging
+    pipeline first, and validating it against a public defect dataset before adding intelligence layers.
+    \item We will prioritize fast feedback over perfection by using weekly milestones, testing each
+    module (detection, database, analytics, RAG) independently before integration.
+    \item Success is defined by what can be reliably detected, logged, and reported in the first
+    working prototype, then iteratively improved with better classification and reporting quality.
+\end{itemize}
+
+\section{Problem Statement}
+Manufacturing lines in small and mid-sized facilities frequently rely on manual visual inspection
+to catch defective parts. This approach faces several concrete issues:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Inconsistency:} Human inspectors tire and miss defects, especially over long shifts.
+    \item \textbf{No root-cause visibility:} A rejected part is simply discarded; nothing connects
+    the rejection to \emph{which} line, \emph{which} time window, or \emph{which} recurring failure
+    pattern is responsible.
+    \item \textbf{Delayed reporting:} Shift reports summarizing what failed and why are compiled
+    manually, well after the fact, delaying corrective action.
+    \item \textbf{Siloed knowledge:} Experienced technicians know that certain defect signatures
+    map to specific causes (e.g., a scratch pattern indicating a worn clamp), but this knowledge is
+    not captured anywhere the system can use it automatically.
+\end{itemize}
+
+\noindent\textbf{Why this matters now:} As production lines scale in number and throughput, even a
+small delay in detecting a systemic defect (e.g., a mis-calibrated press) can result in a large
+batch of rejected output before a human notices the pattern.
+
+\section{Proposed Solution --- Software Proposition}
+
+\subsection{Overview}
+We propose \textbf{MQIS}, a web-based defect detection and quality-intelligence dashboard with
+four integrated components:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Vision-based inspection module:} captures/loads a part image and compares it
+    against a known-good reference using image differencing and contour analysis to localize and
+    classify the defect (type, severity, confidence).
+    \item \textbf{Event logging layer:} every inspection --- pass or reject --- is persisted with a
+    timestamp, production line ID, defect type, severity, and confidence score.
+    \item \textbf{Live analytics engine:} aggregates the log in real time into per-line rejection
+    rates, line status flags (Normal / Warning / Critical), defect-type breakdowns, and hourly
+    trend data (including the peak-failure hour).
+    \item \textbf{RAG-based reporting assistant:} embeds a small factory knowledge base (defect
+    causes, maintenance notes) into a vector store, retrieves the most relevant knowledge for the
+    current data snapshot, and uses a local LLM to generate a grounded, human-readable shift report
+    or answer free-text operator questions.
+\end{itemize}
+
+\subsection{Core Workflow}
+\begin{enumerate}[leftmargin=*]
+    \item An inspector (or the simulated feed) triggers an inspection for a selected production line.
+    \item The vision module compares the part against a reference image, localizes any defect region,
+    and classifies it by type and severity.
+    \item The result is logged to the database and reflected immediately on the live dashboard.
+    \item The analytics engine recomputes rejection rates, line status, and defect distributions.
+    \item On request, the RAG assistant retrieves relevant factory knowledge and produces a shift
+    report or answers a specific question (e.g., ``why is Line 1 rejecting more today?'').
+\end{enumerate}
+
+\subsection{Operational Constraints}
+\begin{itemize}[leftmargin=*]
+    \item The dashboard must remain responsive on standard laptop-class hardware (no dedicated GPU
+    required for inspection; the LLM component runs locally via a lightweight quantized model).
+    \item Avoid dependence on proprietary cloud vision APIs; use open, inspectable computer-vision
+    techniques so the system's decisions remain explainable.
+    \item Design the schema and analytics layer to be dataset-agnostic, so the same pipeline can
+    later be pointed at a different defect category or product line with minimal changes.
+\end{itemize}
+
+\section{Solution Approach --- Engineering Focus}
+This is an engineering systems project; the focus is on building a correct, integrated pipeline
+rather than on inventing new defect-detection algorithms.
+
+\subsection{Detection Module (Non-research)}
+\begin{itemize}[leftmargin=*]
+    \item Reference-based differencing: grayscale conversion, Gaussian blur, absolute difference
+    against a known-good image.
+    \item Thresholding and morphological operations (close/open) to isolate the defect region while
+    suppressing noise.
+    \item Contour extraction to obtain a bounding box for visualization, with a minimum-area filter
+    to reject spurious detections.
+    \item Defect classification is data-driven (based on labelled categories in the dataset) rather
+    than a novel model, keeping scope realistic for the semester.
+\end{itemize}
+
+\subsection{System Architecture (3-tier)}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Frontend:} Streamlit-based dashboard --- inspection view, live statistics, defect
+    log table, and an AI assistant panel.
+    \item \textbf{Backend / logic:} Python modules for detection, analytics aggregation, and RAG
+    orchestration.
+    \item \textbf{Data layer:} SQLite for structured event logging; a local vector store (Chroma)
+    for the factory knowledge base used in retrieval.
+\end{itemize}
+
+\subsection{CI/CD and Iteration Discipline}
+\begin{itemize}[leftmargin=*]
+    \item Each module (detector, database, analytics, RAG) is developed and unit-tested independently
+    before integration into \texttt{app.py}.
+    \item A shared Git repository with a linear commit history per feature branch, merged weekly.
+    \item Lightweight automated checks (import sanity, schema validation) run before each merge to
+    avoid breaking the dashboard.
+\end{itemize}
+
+\section{Evaluation Criteria}
+
+\subsection{Primary Evaluation Metric}
+\textbf{Mean Time-to-Log (MTTL):} the time between an inspection event occurring and it being
+reflected in the live dashboard and database.
+\begin{itemize}[leftmargin=*]
+    \item Target: MTTL $\leq$ 2 seconds per inspection under normal load.
+    \item Attribution: measured via internal timestamps between capture and successful database write.
+\end{itemize}
+
+\subsection{Secondary Evaluation Metrics}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Detection consistency:} percentage of known defective samples correctly flagged
+    as rejected across the test dataset.
+    \item \textbf{Report generation latency:} time taken by the RAG pipeline to produce a full shift
+    report (target: under 30 seconds on local hardware).
+    \item \textbf{Analytics correctness:} rejection-rate and status-flag calculations validated
+    against manually computed values on a fixed sample log.
+    \item \textbf{Usability:} informal feedback (1--5 scale) from 3--5 peer testers on dashboard
+    clarity and report usefulness.
+\end{itemize}
+
+\subsection{Validation Plan}
+Run a fixed batch of $\geq$50 inspections across three simulated production lines, compare
+system-reported rejection rates and status flags against a manually tallied ground truth, and
+collect qualitative feedback on the generated shift reports from 3--5 peer reviewers.
+
+\section{Scalability}
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Theoretical:} The architecture decouples the detection, logging, analytics, and
+    reporting layers, allowing each to scale independently (e.g., swapping SQLite for a managed
+    relational database under higher throughput) without redesigning the pipeline.
+    \item \textbf{Practical:} The knowledge base and vector store can be extended with additional
+    factory documentation without code changes, and the detection module can be pointed at a new
+    defect category by supplying a new reference image set and label mapping.
+\end{enumerate}
+
+\section{Engine Availability Heuristic}
+A mature set of tools is available to implement this without building infrastructure from scratch:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{OpenCV} --- image differencing, thresholding, contour detection.
+    \item \textbf{Streamlit} --- rapid dashboard/UI development.
+    \item \textbf{Pandas} --- analytics aggregation (rejection rates, groupby summaries).
+    \item \textbf{SQLite} --- lightweight structured event storage.
+    \item \textbf{ChromaDB + Sentence-Transformers} --- embedding and retrieval for the knowledge base.
+    \item \textbf{Ollama (Llama 3.2)} --- local LLM inference for report generation, avoiding
+    dependence on external API costs or connectivity.
+\end{itemize}
+We will use these mature, well-documented components to focus effort on system integration,
+correctness, and evaluation rather than reinventing infrastructure.
+
+\section{Project Scope and Deliverables}
+
+\subsection{Initial Deliverable (Milestone 1)}
+\begin{itemize}[leftmargin=*]
+    \item Working detection module against a labelled reference dataset.
+    \item SQLite logging of every inspection event.
+    \item Minimal Streamlit dashboard showing the latest inspection result.
+\end{itemize}
+
+\subsection{Subsequent Deliverables}
+\begin{itemize}[leftmargin=*]
+    \item Full live-analytics panel (per-line status, defect-type/hourly breakdowns).
+    \item RAG knowledge base integration with shift-report generation.
+    \item Free-text question-answering assistant grounded in live data.
+    \item Final testing, documentation, and demo packaging.
+\end{itemize}
+
+\section{Team Roles and Resources}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Bharat Bhardwaj} --- Vision/detection module, system integration across all
+    three components, dataset preparation, and evaluation of detection consistency.
+    \item \textbf{Rishit} --- Database schema, analytics engine, dashboard integration
+    (Streamlit frontend).
+    \item \textbf{Asmita} --- RAG pipeline (knowledge base, embeddings, LLM integration),
+    documentation, and final report writing.
+\end{itemize}
+\noindent\textbf{Material resources:} A public defect-detection image dataset (e.g., MVTec-style
+categories), standard laptop hardware, and open-source software only. No external funding is
+required; all tools used are free and open-source.
+
+\section{15-Week Timeline}
+
+\begin{longtable}{@{}p{1.6cm}p{4.3cm}p{4.3cm}p{4.3cm}@{}}
+\toprule
+\textbf{Week} & \textbf{Bharat (Detection \& Integration)} & \textbf{Rishit (Data/Analytics)} & \textbf{Asmita (RAG/Reporting)} \\
+\midrule
+\endhead
+1 & Literature/tooling survey; finalize dataset & Define DB schema for event logging & Survey RAG stack (Chroma, embeddings, Ollama) \\
+2 & Set up reference-image comparison pipeline & Implement \texttt{database.py} (init, log, query) & Set up local Llama 3.2 via Ollama; test basic chat call \\
+3 & Implement grayscale diff + thresholding & Test DB read/write with dummy data & Draft initial factory knowledge base (.txt notes) \\
+4 & Add contour extraction + bounding box & Build minimal Streamlit shell (\texttt{app.py} skeleton) & Implement embedding pipeline for knowledge base \\
+5 & Implement defect classification mapping & Wire detection output into DB logging & Implement Chroma collection build/query \\
+6 & \textbf{Milestone 1:} Working detection on sample dataset & \textbf{Milestone 1:} Logging pipeline integrated & \textbf{Milestone 1:} Retrieval returns relevant chunks \\
+7 & Tune thresholds; reduce false positives & Build \texttt{analytics.py}: rejection rate, by-line summary & Draft prompt template for shift report generation \\
+8 & Add severity/confidence scoring & Add by-type and by-hour breakdowns & Implement \texttt{generate\_report()} end-to-end \\
+9 & Visual annotation (bounding box + label overlay) & Add line-status flags (Normal/Warning/Critical) & Implement \texttt{answer\_question()} for free-text queries \\
+10 & Integration testing with live dashboard & Live stats panel in Streamlit (metrics, bar chart) & Integrate AI assistant panel into dashboard UI \\
+11 & \textbf{Milestone 2:} Full inspection view working & \textbf{Milestone 2:} Full analytics panel working & \textbf{Milestone 2:} Full RAG panel working \\
+12 & End-to-end integration (all modules combined) & End-to-end integration (all modules combined) & End-to-end integration (all modules combined) \\
+13 & System testing: run $\geq$50 inspections, log accuracy & Validate analytics against manual ground truth & Evaluate report quality/latency against target \\
+14 & Bug fixing; buffer week for unresolved issues & Bug fixing; buffer week for unresolved issues & Bug fixing; buffer week for unresolved issues \\
+15 & Final demo prep, documentation, presentation & Final demo prep, documentation, presentation & Final demo prep, documentation, presentation \\
+\bottomrule
+\end{longtable}
+
+\section{Risks and Mitigations}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Detection accuracy on edge cases:} lighting/angle variation may cause false
+    positives; mitigate with a fixed capture setup and threshold tuning during Weeks 6--8.
+    \item \textbf{LLM latency/resource constraints:} local LLM inference may be slow on limited
+    hardware; mitigate by using a small quantized model and caching repeated report queries.
+    \item \textbf{Integration delays:} three independently developed modules may have interface
+    mismatches; mitigate with an agreed data-contract (schema/field names) fixed by Week 3, and a
+    dedicated integration buffer (Weeks 12, 14).
+    \item \textbf{Knowledge base quality:} a thin knowledge base leads to shallow RAG answers;
+    mitigate by iteratively expanding factory notes based on gaps found during testing.
+\end{itemize}
+
+\section{Summary}
+This project proposes MQIS, a deployable software platform that unifies real-time visual defect
+detection, structured event logging, live analytics, and RAG-based natural-language reporting for
+a manufacturing quality-control setting. It meets the course criteria by emphasizing incremental,
+testable delivery across three clearly divided engineering roles, using measurable evaluation
+criteria (particularly mean time-to-log and detection consistency), and remaining focused on
+system integration and correctness rather than algorithmic novelty.
+
+\end{document}
 
